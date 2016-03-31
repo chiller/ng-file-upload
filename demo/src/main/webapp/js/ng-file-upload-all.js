@@ -898,13 +898,17 @@ ngFileUpload.service('Upload', ['$parse', '$timeout', '$compile', '$q', 'UploadE
     if (!resizeVal || !upload.isResizeSupported() || !files.length) return upload.emptyPromise();
     if (resizeVal instanceof Function) {
       var defer = $q.defer();
+      scope.$emit('resizeStarted');
       resizeVal(files).then(function (p) {
         resizeWithParams(p, files, attr, scope).then(function (r) {
+          scope.$emit('resizeFinished');
           defer.resolve(r);
         }, function (e) {
+          scope.$emit('resizeFinished');
           defer.reject(e);
         });
       }, function (e) {
+        scope.$emit('resizeFinished');
         defer.reject(e);
       });
     } else {
@@ -918,6 +922,7 @@ ngFileUpload.service('Upload', ['$parse', '$timeout', '$compile', '$q', 'UploadE
     function handleFile(f, i) {
       if (f.type.indexOf('image') === 0) {
         if (param.pattern && !upload.validatePattern(f, param.pattern)) return;
+        scope.$emit('resizeStarted');
         var promise = upload.resize(f, param.width, param.height, param.quality,
           param.type, param.ratio, param.centerCrop, function (width, height) {
             return upload.attrGetter('ngfResizeIf', attr, scope,
@@ -925,8 +930,10 @@ ngFileUpload.service('Upload', ['$parse', '$timeout', '$compile', '$q', 'UploadE
           }, param.restoreExif !== false);
         promises.push(promise);
         promise.then(function (resizedFile) {
+          scope.$emit('resizeFinished');
           files.splice(i, 1, resizedFile);
         }, function (e) {
+          scope.$emit('resizeFinished');
           f.$error = 'resize';
           f.$errorParam = (e ? (e.message ? e.message : e) + ': ' : '') + (f && f.name);
         });
@@ -2399,7 +2406,7 @@ ngFileUpload.service('UploadResize', ['UploadValidate', '$q', function (UploadVa
             var promises = [upload.emptyPromise()];
             if (includeDir) {
               var file = {type: 'directory'};
-              file.name = file.path = (path || '') + entry.name + entry.name;
+              file.name = file.path = (path || '') + entry.name;
               files.push(file);
             }
             var dirReader = entry.createReader();
